@@ -8,9 +8,10 @@ interface EndpointListProps {
     onDelete: (id: string) => void;
     onClone: (id: string) => void;
     onHit: (id: string) => void;
+    onTest: (id: string) => void;
 }
 
-const EndpointList: React.FC<EndpointListProps> = ({ endpoints, onEdit, onDelete, onClone, onHit }) => {
+const EndpointList: React.FC<EndpointListProps> = ({ endpoints, onEdit, onDelete, onClone, onHit, onTest }) => {
     if (endpoints.length === 0) {
         return (
             <div className="text-center py-16 px-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
@@ -30,6 +31,7 @@ const EndpointList: React.FC<EndpointListProps> = ({ endpoints, onEdit, onDelete
                     onDelete={onDelete}
                     onClone={onClone}
                     onHit={onHit}
+                    onTest={onTest}
                 />
             ))}
         </div>

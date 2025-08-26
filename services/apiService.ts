@@ -2,44 +2,24 @@ import { Endpoint, ApiKey } from '../types';
 
 let endpoints: Endpoint[] = [
     {
-        id: "httpbin-service",
-        path_prefix: "/service1",
-        target_url: "http://httpbin.org/anything",
+        id: "gemini-api-proxy",
+        path_prefix: "v1beta/models/gemini-2.5-flash:generateContent?key=",
+        target_url: "https://generativelanguage.googleapis.com",
         headers_to_add: {
-            "X-Proxy-Source": "ReactGUI"
+            "X-Proxy-Manager": "Consolidated-Gemini-Endpoint"
         },
         auth_config: {
-            type: "none"
-        }
-    },
-    {
-        id: "jsonplaceholder-posts",
-        path_prefix: "/service2",
-        target_url: "https://jsonplaceholder.typicode.com",
-        auth_config: {
             type: "api_key",
-            name: "X-Api-Token",
-            values: [{ value: "secret-placeholder-token", usage: 0, last_used: null }]
-        }
-    },
-     {
-        id: "image-placeholder",
-        path_prefix: "/images",
-        target_url: "https://picsum.photos",
-        auth_config: {
-            type: "none"
-        }
-    },
-    {
-        id: "gemini-api-service",
-        path_prefix: "/gemini",
-        target_url: "https://generativelanguage.googleapis.com",
-        auth_config: {
-            type: "api_key",
-            name: "x-goog-api-key",
+            name: "key",
+            in: "query",
             values: [
-                { value: "YOUR_GEMINI_API_KEY_1", usage: 5, last_used: "2023-10-26T10:00:00Z" },
-                { value: "YOUR_GEMINI_API_KEY_2", usage: 2, last_used: "2023-10-27T11:30:00Z" }
+                {
+                    value: "YOUR_GEMINI_API_KEY_1",
+                    usage: 5,
+                    last_used: "2023-10-26T10:00:00Z",
+                    rate_limit: { requests_per_minute: 60 },
+                    usage_history: [Date.now() - 65000, Date.now() - 20000, Date.now() - 10000, Date.now() - 5000, Date.now() - 1000]
+                }
             ]
         }
     }
@@ -119,22 +99,43 @@ export const logEndpointHit = async (id: string): Promise<Endpoint> => {
 
     if (endpoint.auth_config?.type === 'api_key' && endpoint.auth_config.values && endpoint.auth_config.values.length > 0) {
         const keys = endpoint.auth_config.values;
-
-        // Find the key to use based on rotation (least recently used)
-        let keyToUse: ApiKey | null = null;
+        const now = Date.now();
         
-        const unusedKeys = keys.filter(k => k.last_used === null);
-        if(unusedKeys.length > 0) {
-            keyToUse = unusedKeys[0];
-        } else {
-            // Sort by last_used date, oldest first
-            keyToUse = [...keys].sort((a, b) => new Date(a.last_used!).getTime() - new Date(b.last_used!).getTime())[0];
+        let chosenKey: ApiKey | null = null;
+
+        // Iterate through keys to find one that is not rate-limited
+        for (const key of keys) {
+            if (!key.usage_history) {
+                key.usage_history = [];
+            }
+            // Clean up old history (older than a day) to prevent memory leaks
+            key.usage_history = key.usage_history.filter(ts => now - ts < 24 * 60 * 60 * 1000);
+
+            const requestsInLastMinute = key.usage_history.filter(ts => now - ts < 60 * 1000).length;
+            const requestsInLastHour = key.usage_history.filter(ts => now - ts < 60 * 60 * 1000).length;
+            const requestsInLastDay = key.usage_history.length; // since we filtered for the last day
+
+            const isRateLimited = (
+                (key.rate_limit?.requests_per_minute != null && requestsInLastMinute >= key.rate_limit.requests_per_minute) ||
+                (key.rate_limit?.requests_per_hour != null && requestsInLastHour >= key.rate_limit.requests_per_hour) ||
+                (key.rate_limit?.requests_per_day != null && requestsInLastDay >= key.rate_limit.requests_per_day)
+            );
+
+            if (!isRateLimited) {
+                chosenKey = key;
+                break; // Found a valid key
+            }
         }
 
-        if (keyToUse) {
-            keyToUse.usage += 1;
-            keyToUse.last_used = new Date().toISOString();
-            console.log(`API: Logged hit for endpoint '${id}', key '${keyToUse.value.substring(0, 10)}...' used.`);
+        if (chosenKey) {
+            chosenKey.usage += 1;
+            chosenKey.last_used = new Date().toISOString();
+            chosenKey.usage_history.push(now);
+            console.log(`API: Logged hit for endpoint '${id}', key '${chosenKey.value.substring(0, 10)}...' used.`);
+        } else {
+            // All keys are rate-limited
+            console.error(`API: All keys for endpoint '${id}' are currently rate-limited.`);
+            throw new Error(`All API keys for endpoint '${id}' are currently rate-limited. Please try again later.`);
         }
     } else {
          console.log(`API: Logged hit for endpoint '${id}' (no API key to rotate).`);

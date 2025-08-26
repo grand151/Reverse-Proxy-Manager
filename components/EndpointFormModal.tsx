@@ -11,6 +11,8 @@ interface EndpointFormModalProps {
 }
 
 const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, onSave, endpoint }) => {
+    const initialApiKey: ApiKey = { value: '', usage: 0, last_used: null, rate_limit: {}, usage_history: [] };
+    
     const [formData, setFormData] = useState<Endpoint>({
         id: '',
         path_prefix: '',
@@ -21,14 +23,22 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
     const [headersJson, setHeadersJson] = useState('{}');
     const [errors, setErrors] = useState<Record<string, string>>({});
     
-    const initialApiKey: ApiKey = { value: '', usage: 0, last_used: null };
 
     useEffect(() => {
         if (endpoint) {
             const processedEndpoint = JSON.parse(JSON.stringify(endpoint));
             if (processedEndpoint.auth_config?.type === 'api_key') {
-                if (!processedEndpoint.auth_config.values) {
+                if (!processedEndpoint.auth_config.in) {
+                    processedEndpoint.auth_config.in = 'header';
+                }
+                if (!processedEndpoint.auth_config.values || processedEndpoint.auth_config.values.length === 0) {
                      processedEndpoint.auth_config.values = [initialApiKey];
+                } else {
+                    processedEndpoint.auth_config.values = processedEndpoint.auth_config.values.map((k: ApiKey) => ({
+                        ...initialApiKey,
+                        ...k,
+                        rate_limit: k.rate_limit || {},
+                    }));
                 }
             }
             setFormData(processedEndpoint);
@@ -59,7 +69,7 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
         
         if (formData.auth_config?.type === 'api_key') {
             if (!formData.auth_config.name) {
-                newErrors.auth_config_name = 'Header Name is required for API Key auth.';
+                newErrors.auth_config_name = 'Header/Parameter Name is required for API Key auth.';
             }
             if (!formData.auth_config.values || formData.auth_config.values.length === 0 || formData.auth_config.values.some((k: ApiKey) => !k.value.trim())) {
                 newErrors.auth_config_values = 'At least one API Key is required and cannot be empty.';
@@ -87,13 +97,13 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
         setFormData(prev => {
             let newAuthConfig: AuthConfig = { type: newType };
             if (newType === 'api_key') {
-                newAuthConfig = { type: 'api_key', name: '', values: [initialApiKey] };
+                newAuthConfig = { type: 'api_key', name: '', in: 'header', values: [initialApiKey] };
             }
             return { ...prev, auth_config: newAuthConfig };
         });
     };
 
-    const handleApiKeyConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleApiKeyConfigChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
@@ -105,10 +115,22 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
         }));
     }
 
-    const handleApiKeyValueChange = (index: number, value: string) => {
+    const handleApiKeyValueChange = (index: number, field: 'value' | 'requests_per_minute' | 'requests_per_hour' | 'requests_per_day', value: string) => {
         setFormData(prev => {
             const newValues = [...(prev.auth_config?.values || [])];
-            newValues[index] = { ...newValues[index], value: value };
+            const updatedKey = { ...newValues[index] };
+
+            if (field === 'value') {
+                updatedKey.value = value;
+            } else {
+                updatedKey.rate_limit = {
+                    ...updatedKey.rate_limit,
+                    [field]: value === '' ? undefined : Number(value)
+                };
+            }
+    
+            newValues[index] = updatedKey;
+    
             return {
                 ...prev,
                 auth_config: { ...prev.auth_config, type: 'api_key', values: newValues }
@@ -141,6 +163,9 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
 
     const formTitle = endpoint ? 'Edit Endpoint' : 'Add New Endpoint';
     
+    const inputClass = "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white";
+    const errorInputClass = "border-red-500";
+    
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={formTitle}>
             <form onSubmit={handleSubmit} noValidate>
@@ -148,21 +173,21 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
                      <div>
                         <label htmlFor="id" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Endpoint ID</label>
                         <input type="text" name="id" id="id" value={formData.id} onChange={handleChange} disabled={!!endpoint}
-                               className={`bg-gray-50 border ${errors.id ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white disabled:opacity-70 disabled:cursor-not-allowed`}
+                               className={`${inputClass} ${errors.id ? errorInputClass : ''} disabled:opacity-70 disabled:cursor-not-allowed`}
                                placeholder="e.g., my-service" required />
                         {errors.id && <p className="mt-1 text-xs text-red-500">{errors.id}</p>}
                     </div>
                      <div>
                         <label htmlFor="path_prefix" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Path Prefix</label>
                         <input type="text" name="path_prefix" id="path_prefix" value={formData.path_prefix} onChange={handleChange}
-                               className={`bg-gray-50 border ${errors.path_prefix ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white`}
+                               className={`${inputClass} ${errors.path_prefix ? errorInputClass : ''}`}
                                placeholder="e.g., /my_new_service" required />
                         {errors.path_prefix && <p className="mt-1 text-xs text-red-500">{errors.path_prefix}</p>}
                     </div>
                      <div>
                         <label htmlFor="target_url" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Target URL</label>
                         <input type="text" name="target_url" id="target_url" value={formData.target_url} onChange={handleChange}
-                               className={`bg-gray-50 border ${errors.target_url ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white`}
+                               className={`${inputClass} ${errors.target_url ? errorInputClass : ''}`}
                                placeholder="e.g., http://localhost:8080" required />
                          {errors.target_url && <p className="mt-1 text-xs text-red-500">{errors.target_url}</p>}
                     </div>
@@ -184,28 +209,62 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
 
                     {formData.auth_config?.type === 'api_key' && (
                         <div className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg space-y-4">
-                             <div>
-                                <label htmlFor="auth_config_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Header Name</label>
-                                <input type="text" name="name" id="auth_config_name" value={formData.auth_config.name || ''} onChange={handleApiKeyConfigChange}
-                                       className={`bg-gray-50 border ${errors.auth_config_name ? 'border-red-500' : 'border-gray-300'} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white`}
-                                       placeholder="e.g., X-API-Key" required />
-                                {errors.auth_config_name && <p className="mt-1 text-xs text-red-500">{errors.auth_config_name}</p>}
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="auth_config_in" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">API Key Location</label>
+                                    <select id="auth_config_in" name="in" value={formData.auth_config.in || 'header'} onChange={handleApiKeyConfigChange}
+                                            className={inputClass}>
+                                        <option value="header">Header</option>
+                                        <option value="query">Query Parameter</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="auth_config_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                                        {formData.auth_config.in === 'query' ? 'Parameter Name' : 'Header Name'}
+                                    </label>
+                                    <input type="text" name="name" id="auth_config_name" value={formData.auth_config.name || ''} onChange={handleApiKeyConfigChange}
+                                           className={`${inputClass} ${errors.auth_config_name ? errorInputClass : ''}`}
+                                           placeholder={formData.auth_config.in === 'query' ? 'e.g., key' : 'e.g., X-API-Key'} required />
+                                    {errors.auth_config_name && <p className="mt-1 text-xs text-red-500">{errors.auth_config_name}</p>}
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="block text-sm font-medium text-gray-900 dark:text-white">API Keys</label>
+                            <div className="space-y-3">
+                                <label className="block text-sm font-medium text-gray-900 dark:text-white">API Keys &amp; Rate Limits</label>
                                 {formData.auth_config.values?.map((key: ApiKey, index: number) => (
-                                    <div key={index} className="flex items-center gap-2">
-                                        <input type="text" value={key.value} onChange={(e) => handleApiKeyValueChange(index, e.target.value)}
-                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                                            placeholder="Enter API Key"
-                                        />
-                                        <button type="button" onClick={() => removeApiKey(index)}
-                                            className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                            aria-label="Remove API Key"
-                                            disabled={formData.auth_config.values && formData.auth_config.values.length === 1}
-                                        >
-                                            <MinusIcon className="w-5 h-5" />
-                                        </button>
+                                    <div key={index} className="space-y-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                                        <div className="flex items-center gap-2">
+                                            <input type="text" value={key.value} onChange={(e) => handleApiKeyValueChange(index, 'value', e.target.value)}
+                                                className={inputClass}
+                                                placeholder="Enter API Key"
+                                            />
+                                            <button type="button" onClick={() => removeApiKey(index)}
+                                                className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                aria-label="Remove API Key"
+                                                disabled={formData.auth_config.values && formData.auth_config.values.length === 1}
+                                            >
+                                                <MinusIcon className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                            <div>
+                                                <label htmlFor={`rpm-${index}`} className="text-xs font-medium text-gray-600 dark:text-gray-400">RPM</label>
+                                                <input id={`rpm-${index}`} type="number" min="0" placeholder="Reqs/Min" value={key.rate_limit?.requests_per_minute || ''}
+                                                    onChange={(e) => handleApiKeyValueChange(index, 'requests_per_minute', e.target.value)}
+                                                    className={`${inputClass} text-xs p-2`} />
+                                            </div>
+                                             <div>
+                                                <label htmlFor={`rph-${index}`} className="text-xs font-medium text-gray-600 dark:text-gray-400">RPH</label>
+                                                <input id={`rph-${index}`} type="number" min="0" placeholder="Reqs/Hour" value={key.rate_limit?.requests_per_hour || ''}
+                                                    onChange={(e) => handleApiKeyValueChange(index, 'requests_per_hour', e.target.value)}
+                                                    className={`${inputClass} text-xs p-2`} />
+                                            </div>
+                                             <div>
+                                                <label htmlFor={`rpd-${index}`} className="text-xs font-medium text-gray-600 dark:text-gray-400">RPD</label>
+                                                <input id={`rpd-${index}`} type="number" min="0" placeholder="Reqs/Day" value={key.rate_limit?.requests_per_day || ''}
+                                                    onChange={(e) => handleApiKeyValueChange(index, 'requests_per_day', e.target.value)}
+                                                    className={`${inputClass} text-xs p-2`} />
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                                 {errors.auth_config_values && <p className="mt-1 text-xs text-red-500">{errors.auth_config_values}</p>}

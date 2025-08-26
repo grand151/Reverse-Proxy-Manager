@@ -1,6 +1,6 @@
 import React from 'react';
 import { Endpoint, ApiKey } from '../types';
-import { BoltIcon, CloneIcon, EditIcon, TrashIcon } from './Icons';
+import { BeakerIcon, BoltIcon, CloneIcon, EditIcon, TrashIcon } from './Icons';
 
 interface EndpointItemProps {
     endpoint: Endpoint;
@@ -8,6 +8,7 @@ interface EndpointItemProps {
     onDelete: (id: string) => void;
     onClone: (id: string) => void;
     onHit: (id: string) => void;
+    onTest: (id: string) => void;
 }
 
 const formatLastUsed = (dateString: string | null): string => {
@@ -25,19 +26,37 @@ const KeyUsageStats: React.FC<{ keys: ApiKey[] }> = ({ keys }) => {
             <h4 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-2">API Key Usage</h4>
             <div className="space-y-2 text-xs">
                 {keys.map((key, index) => (
-                    <div key={index} className="grid grid-cols-3 gap-2 p-2 rounded-md bg-gray-100 dark:bg-gray-700/50">
-                        <div className="col-span-1">
-                            <span className="font-medium text-gray-600 dark:text-gray-400">Key {index + 1}:</span>
-                            <code className="ml-2 truncate" title={key.value}>{key.value.substring(0, 15)}...</code>
+                    <div key={index} className="p-2 rounded-md bg-gray-100 dark:bg-gray-700/50">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                            <div className="sm:col-span-1">
+                                <span className="font-medium text-gray-600 dark:text-gray-400">Key {index + 1}:</span>
+                                <code className="ml-2 truncate" title={key.value}>{key.value.substring(0, 15)}...</code>
+                            </div>
+                            <div className="sm:col-span-1">
+                                <span className="font-medium text-gray-600 dark:text-gray-400">Usage:</span>
+                                <span className="ml-2 font-bold text-blue-600 dark:text-blue-400">{key.usage}</span>
+                            </div>
+                            <div className="sm:col-span-1">
+                                 <span className="font-medium text-gray-600 dark:text-gray-400">Last Used:</span>
+                                 <span className="ml-2">{formatLastUsed(key.last_used)}</span>
+                            </div>
                         </div>
-                        <div className="col-span-1">
-                            <span className="font-medium text-gray-600 dark:text-gray-400">Usage:</span>
-                            <span className="ml-2 font-bold text-blue-600 dark:text-blue-400">{key.usage}</span>
-                        </div>
-                        <div className="col-span-1">
-                             <span className="font-medium text-gray-600 dark:text-gray-400">Last Used:</span>
-                             <span className="ml-2">{formatLastUsed(key.last_used)}</span>
-                        </div>
+                         {(key.rate_limit && Object.values(key.rate_limit).some(v => v != null && v > 0)) && (
+                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600 flex items-center space-x-4">
+                                <span className="font-medium text-gray-600 dark:text-gray-400">Limits:</span>
+                                <div className="flex items-center gap-4 text-xs">
+                                    {key.rate_limit?.requests_per_minute != null && (
+                                        <span>RPM: <span className="font-bold">{key.rate_limit.requests_per_minute}</span></span>
+                                    )}
+                                     {key.rate_limit?.requests_per_hour != null && (
+                                        <span>RPH: <span className="font-bold">{key.rate_limit.requests_per_hour}</span></span>
+                                    )}
+                                     {key.rate_limit?.requests_per_day != null && (
+                                        <span>RPD: <span className="font-bold">{key.rate_limit.requests_per_day}</span></span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
@@ -45,7 +64,7 @@ const KeyUsageStats: React.FC<{ keys: ApiKey[] }> = ({ keys }) => {
     );
 };
 
-const EndpointItem: React.FC<EndpointItemProps> = ({ endpoint, onEdit, onDelete, onClone, onHit }) => {
+const EndpointItem: React.FC<EndpointItemProps> = ({ endpoint, onEdit, onDelete, onClone, onHit, onTest }) => {
     const hasApiKeys = endpoint.auth_config?.type === 'api_key' && endpoint.auth_config.values && endpoint.auth_config.values.length > 0;
 
     return (
@@ -64,7 +83,15 @@ const EndpointItem: React.FC<EndpointItemProps> = ({ endpoint, onEdit, onDelete,
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center space-x-3 self-end md:self-center">
+                <div className="flex items-center space-x-2 self-end md:self-center">
+                     <button
+                        onClick={() => onTest(endpoint.id)}
+                        className="p-2 text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        aria-label={`Test endpoint ${endpoint.id}`}
+                        title="Test in new tab"
+                    >
+                        <BeakerIcon className="w-5 h-5" />
+                    </button>
                      <button
                         onClick={() => onHit(endpoint.id)}
                         className="p-2 text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"

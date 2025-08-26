@@ -5,6 +5,7 @@ import Header from './components/Header';
 import EndpointList from './components/EndpointList';
 import EndpointFormModal from './components/EndpointFormModal';
 import ConfirmationModal from './components/ConfirmationModal';
+import TestEndpointModal from './components/TestEndpointModal';
 import { PlusIcon } from './components/Icons';
 
 const App: React.FC = () => {
@@ -15,6 +16,8 @@ const App: React.FC = () => {
     const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
     const [deletingEndpointId, setDeletingEndpointId] = useState<string | null>(null);
+    const [isTestModalOpen, setIsTestModalOpen] = useState<boolean>(false);
+    const [testingEndpoint, setTestingEndpoint] = useState<Endpoint | null>(null);
 
     const fetchEndpoints = useCallback(async () => {
         try {
@@ -103,6 +106,21 @@ const App: React.FC = () => {
         }
     };
 
+    const handleOpenTestModal = (id: string) => {
+        const endpoint = endpoints.find(ep => ep.id === id);
+        if (endpoint) {
+            setTestingEndpoint(endpoint);
+            setIsTestModalOpen(true);
+        } else {
+            console.error(`Could not find endpoint with ID: ${id}`);
+            alert(`Error: Could not find endpoint with ID '${id}' to test.`);
+        }
+    };
+
+    const handleCloseTestModal = () => {
+        setIsTestModalOpen(false);
+        setTestingEndpoint(null);
+    };
 
     return (
         <div className="min-h-screen text-gray-800 dark:text-gray-200">
@@ -128,6 +146,7 @@ const App: React.FC = () => {
                         onDelete={handleOpenConfirmModal}
                         onClone={handleCloneEndpoint}
                         onHit={handleEndpointHit}
+                        onTest={handleOpenTestModal}
                     />
                 )}
             </main>
@@ -148,6 +167,14 @@ const App: React.FC = () => {
                     onConfirm={handleDeleteEndpoint}
                     title="Delete Endpoint"
                     message={`Are you sure you want to delete the endpoint with ID "${deletingEndpointId}"? This action cannot be undone.`}
+                />
+            )}
+
+            {isTestModalOpen && testingEndpoint && (
+                <TestEndpointModal
+                    isOpen={isTestModalOpen}
+                    onClose={handleCloseTestModal}
+                    endpoint={testingEndpoint}
                 />
             )}
         </div>

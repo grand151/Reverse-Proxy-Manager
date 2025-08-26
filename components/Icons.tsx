@@ -41,3 +41,9 @@ export const BoltIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
     </svg>
 );
+
+export const BeakerIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.625a3.75 3.75 0 0 1-7.5 0V3.104M14.25 3.104v5.625a3.75 3.75 0 0 0 7.5 0V3.104m-7.5 7.5v-1.875c0-1.036.84-1.875 1.875-1.875h3.75c1.036 0 1.875.84 1.875 1.875v1.875m-7.5 0L6.375 16.125m7.5 0l-3.375 5.625m-3.375-5.625L12 21.75" />
+    </svg>
+);
