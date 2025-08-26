@@ -1,0 +1,5 @@
+{
+  "name": "Reverse Proxy Manager",
+  "description": "A web-based graphical user interface (GUI) to dynamically manage reverse proxy endpoints. This application allows users to view, add, edit, and delete proxy configurations in real-time.",
+  "requestFramePermissions": []
+}
