@@ -157,3 +157,12 @@ export const logEndpointHit = async (id: string): Promise<Endpoint> => {
 
     return JSON.parse(JSON.stringify(endpoint));
 };
+
+export const overwriteEndpoints = async (newEndpoints: Endpoint[]): Promise<void> => {
+    await simulateDelay(300);
+    if (!Array.isArray(newEndpoints)) {
+        throw new Error("Invalid configuration format provided.");
+    }
+    endpoints = JSON.parse(JSON.stringify(newEndpoints)); // Deep copy
+    console.log("API: Overwrote all endpoints with new configuration.");
+};

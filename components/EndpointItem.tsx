@@ -92,7 +92,7 @@ const EndpointItem: React.FC<EndpointItemProps> = ({ endpoint, onEdit, onDelete,
                         onClick={() => onTest(endpoint.id)}
                         className="p-2 text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         aria-label={`Test endpoint ${endpoint.id}`}
-                        title="Test in new tab"
+                        title="Test Endpoint"
                     >
                         <BeakerIcon className="w-5 h-5" />
                     </button>
