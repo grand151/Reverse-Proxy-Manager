@@ -73,11 +73,15 @@ const EndpointItem: React.FC<EndpointItemProps> = ({ endpoint, onEdit, onDelete,
                 <div className="flex-1 mb-4 md:mb-0 w-full md:w-auto">
                     <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400 break-all">{endpoint.id}</h3>
                     <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                        <p className="flex items-center">
-                            <span className="font-semibold w-28 shrink-0">Path Prefix:</span>
-                            <code className="bg-gray-200 dark:bg-gray-700 rounded px-2 py-1 text-gray-800 dark:text-gray-200 break-all">{endpoint.path_prefix}</code>
-                        </p>
-                        <p className="mt-1 flex items-center">
+                        <div className="flex items-start">
+                             <span className="font-semibold w-28 shrink-0">Path Prefixes:</span>
+                             <div className="flex flex-col items-start gap-1">
+                                {endpoint.path_prefixes.map((prefix, index) => (
+                                    <code key={index} className="bg-gray-200 dark:bg-gray-700 rounded px-2 py-1 text-gray-800 dark:text-gray-200 break-all">{prefix}</code>
+                                ))}
+                            </div>
+                        </div>
+                        <p className="mt-2 flex items-center">
                             <span className="font-semibold w-28 shrink-0">Target URL:</span>
                             <a href={endpoint.target_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline break-all">{endpoint.target_url}</a>
                         </p>

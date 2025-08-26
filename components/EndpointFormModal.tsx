@@ -13,13 +13,15 @@ interface EndpointFormModalProps {
 const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, onSave, endpoint }) => {
     const initialApiKey: ApiKey = { value: '', usage: 0, last_used: null, rate_limit: {}, usage_history: [] };
     
-    const [formData, setFormData] = useState<Endpoint>({
+    const getInitialFormData = (): Endpoint => ({
         id: '',
-        path_prefix: '',
+        path_prefixes: [''],
         target_url: '',
         headers_to_add: {},
         auth_config: { type: 'none' },
     });
+
+    const [formData, setFormData] = useState<Endpoint>(getInitialFormData());
     const [headersJson, setHeadersJson] = useState('{}');
     const [errors, setErrors] = useState<Record<string, string>>({});
     
@@ -27,6 +29,9 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
     useEffect(() => {
         if (endpoint) {
             const processedEndpoint = JSON.parse(JSON.stringify(endpoint));
+            if (!processedEndpoint.path_prefixes || processedEndpoint.path_prefixes.length === 0) {
+                processedEndpoint.path_prefixes = [''];
+            }
             if (processedEndpoint.auth_config?.type === 'api_key') {
                 if (!processedEndpoint.auth_config.in) {
                     processedEndpoint.auth_config.in = 'header';
@@ -44,7 +49,7 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
             setFormData(processedEndpoint);
             setHeadersJson(JSON.stringify(endpoint.headers_to_add || {}, null, 2));
         } else {
-            setFormData({ id: '', path_prefix: '', target_url: '', headers_to_add: {}, auth_config: { type: 'none' } });
+            setFormData(getInitialFormData());
             setHeadersJson('{}');
         }
         setErrors({});
@@ -58,7 +63,9 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
     const validate = (): boolean => {
         const newErrors: Record<string, string> = {};
         if (!formData.id) newErrors.id = 'ID is required.';
-        if (!formData.path_prefix) newErrors.path_prefix = 'Path Prefix is required.';
+        if (!formData.path_prefixes || formData.path_prefixes.length === 0 || formData.path_prefixes.some(p => !p.trim())) {
+            newErrors.path_prefixes = 'At least one Path Prefix is required and cannot be empty.';
+        }
         if (!formData.target_url) newErrors.target_url = 'Target URL is required.';
         
         try {
@@ -160,6 +167,31 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
             };
         });
     };
+    
+    const handlePrefixChange = (index: number, value: string) => {
+        setFormData(prev => {
+            const newPrefixes = [...prev.path_prefixes];
+            newPrefixes[index] = value;
+            return { ...prev, path_prefixes: newPrefixes };
+        });
+    };
+
+    const addPrefix = () => {
+        setFormData(prev => ({
+            ...prev,
+            path_prefixes: [...prev.path_prefixes, '']
+        }));
+    };
+
+    const removePrefix = (index: number) => {
+        setFormData(prev => {
+            const newPrefixes = prev.path_prefixes.filter((_, i) => i !== index);
+            if (newPrefixes.length === 0) {
+                newPrefixes.push('');
+            }
+            return { ...prev, path_prefixes: newPrefixes };
+        });
+    };
 
     const formTitle = endpoint ? 'Edit Endpoint' : 'Add New Endpoint';
     
@@ -178,11 +210,30 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
                         {errors.id && <p className="mt-1 text-xs text-red-500">{errors.id}</p>}
                     </div>
                      <div>
-                        <label htmlFor="path_prefix" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Path Prefix</label>
-                        <input type="text" name="path_prefix" id="path_prefix" value={formData.path_prefix} onChange={handleChange}
-                               className={`${inputClass} ${errors.path_prefix ? errorInputClass : ''}`}
-                               placeholder="e.g., /my_new_service" required />
-                        {errors.path_prefix && <p className="mt-1 text-xs text-red-500">{errors.path_prefix}</p>}
+                        <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Path Prefixes</label>
+                        <div className="space-y-2">
+                             {formData.path_prefixes.map((prefix, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                    <input type="text" value={prefix} onChange={(e) => handlePrefixChange(index, e.target.value)}
+                                        className={`${inputClass} ${errors.path_prefixes ? errorInputClass : ''}`}
+                                        placeholder="e.g., /my_new_service" required 
+                                    />
+                                    <button type="button" onClick={() => removePrefix(index)}
+                                            className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            aria-label="Remove Path Prefix"
+                                            disabled={formData.path_prefixes.length === 1}
+                                        >
+                                        <MinusIcon className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        {errors.path_prefixes && <p className="mt-1 text-xs text-red-500">{errors.path_prefixes}</p>}
+                         <button type="button" onClick={addPrefix}
+                                    className="mt-2 flex items-center gap-2 px-3 py-2 text-sm font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-700">
+                            <PlusIcon className="w-4 h-4" />
+                            Add Path Prefix
+                        </button>
                     </div>
                      <div>
                         <label htmlFor="target_url" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Target URL</label>

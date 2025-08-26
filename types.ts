@@ -19,7 +19,7 @@ export interface AuthConfig {
 
 export interface Endpoint {
     id: string;
-    path_prefix: string;
+    path_prefixes: string[];
     target_url: string;
     headers_to_add?: Record<string, string>;
     auth_config?: AuthConfig;

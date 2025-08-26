@@ -3,7 +3,10 @@ import { Endpoint, ApiKey } from '../types';
 let endpoints: Endpoint[] = [
     {
         id: "gemini-api-proxy",
-        path_prefix: "v1beta/models/gemini-2.5-flash:generateContent?key=",
+        path_prefixes: [
+            "/v1beta/models/gemini-2.5-flash:generateContent",
+            "/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse"
+        ],
         target_url: "https://generativelanguage.googleapis.com",
         headers_to_add: {
             "X-Proxy-Manager": "Consolidated-Gemini-Endpoint"
@@ -21,6 +24,17 @@ let endpoints: Endpoint[] = [
                     usage_history: [Date.now() - 65000, Date.now() - 20000, Date.now() - 10000, Date.now() - 5000, Date.now() - 1000]
                 }
             ]
+        }
+    },
+    {
+        id: "jsonplaceholder-proxy",
+        path_prefixes: ["/posts", "/comments"],
+        target_url: "https://jsonplaceholder.typicode.com",
+        headers_to_add: {
+            "X-Proxy-User": "test-user"
+        },
+        auth_config: {
+            type: "none"
         }
     }
 ];

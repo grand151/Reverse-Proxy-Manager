@@ -9,12 +9,20 @@ interface TestEndpointModalProps {
 }
 
 const TestEndpointModal: React.FC<TestEndpointModalProps> = ({ isOpen, onClose, endpoint }) => {
+    const [selectedPrefix, setSelectedPrefix] = useState(endpoint.path_prefixes[0] || '');
     const [subPath, setSubPath] = useState('');
-    const baseUrl = `${window.location.origin}${endpoint.path_prefix}`;
+    const baseUrl = `${window.location.origin}${selectedPrefix}`;
 
     const getFinalUrl = () => {
         const cleanedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
         const cleanedSubPath = subPath.startsWith('/') ? subPath.slice(1) : subPath;
+
+        if (cleanedBase.includes('?')) {
+             const [base, query] = cleanedBase.split('?');
+             if (!cleanedSubPath) return cleanedBase;
+             return `${base}/${cleanedSubPath}?${query}`;
+        }
+
         if (!cleanedSubPath) return cleanedBase;
         return `${cleanedBase}/${cleanedSubPath}`;
     };
@@ -23,6 +31,8 @@ const TestEndpointModal: React.FC<TestEndpointModalProps> = ({ isOpen, onClose, 
         window.open(getFinalUrl(), '_blank', 'noopener,noreferrer');
         onClose();
     };
+    
+    const selectClass = "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white";
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Test Endpoint: ${endpoint.id}`}>
@@ -32,19 +42,29 @@ const TestEndpointModal: React.FC<TestEndpointModalProps> = ({ isOpen, onClose, 
                         This tool helps you construct a test URL. Your actual reverse proxy server must be configured to handle requests at this application's domain and the specified path prefix.
                     </p>
                 </div>
+                {endpoint.path_prefixes.length > 1 && (
+                     <div>
+                        <label htmlFor="prefix-select" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Path Prefix to Test</label>
+                        <select id="prefix-select" value={selectedPrefix} onChange={e => setSelectedPrefix(e.target.value)} className={selectClass}>
+                            {endpoint.path_prefixes.map(prefix => (
+                                <option key={prefix} value={prefix}>{prefix}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
                  <div>
-                    <label htmlFor="subPath" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Path to Test</label>
+                    <label htmlFor="subPath" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Path to Append (Optional)</label>
                     <input
                         type="text"
                         id="subPath"
                         value={subPath}
                         onChange={(e) => setSubPath(e.target.value)}
                         className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                        placeholder="e.g., v1beta/models"
+                        placeholder="e.g., 1"
                         aria-describedby="subpath-helper"
                     />
                      <p id="subpath-helper" className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        This will be appended to your path prefix. Example for Gemini: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 py-0.5">v1beta/models</code>
+                        This will be appended to your path prefix. Example for JSON Placeholder: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 py-0.5">1</code> to get post with ID 1.
                     </p>
                 </div>
                  <div className="space-y-2">
