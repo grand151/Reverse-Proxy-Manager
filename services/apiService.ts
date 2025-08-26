@@ -5,7 +5,8 @@ let endpoints: Endpoint[] = [
         id: "gemini-api-proxy",
         path_prefixes: [
             "/v1beta/models/gemini-2.5-flash:generateContent",
-            "/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse"
+            "/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
+            "/v1beta/models/gemini-2.5-flash-lite-preview-06-17:streamGenerateContent?alt=sse"
         ],
         target_url: "https://generativelanguage.googleapis.com",
         headers_to_add: {
@@ -35,6 +36,12 @@ let endpoints: Endpoint[] = [
         },
         auth_config: {
             type: "none"
+        },
+        cors_config: {
+            enabled: true,
+            allowed_origins: ["*"],
+            allowed_methods: ["GET", "POST"],
+            allowed_headers: ["Content-Type", "Authorization"]
         }
     }
 ];
@@ -126,12 +133,10 @@ export const logEndpointHit = async (id: string): Promise<Endpoint> => {
             key.usage_history = key.usage_history.filter(ts => now - ts < 24 * 60 * 60 * 1000);
 
             const requestsInLastMinute = key.usage_history.filter(ts => now - ts < 60 * 1000).length;
-            const requestsInLastHour = key.usage_history.filter(ts => now - ts < 60 * 60 * 1000).length;
             const requestsInLastDay = key.usage_history.length; // since we filtered for the last day
 
             const isRateLimited = (
                 (key.rate_limit?.requests_per_minute != null && requestsInLastMinute >= key.rate_limit.requests_per_minute) ||
-                (key.rate_limit?.requests_per_hour != null && requestsInLastHour >= key.rate_limit.requests_per_hour) ||
                 (key.rate_limit?.requests_per_day != null && requestsInLastDay >= key.rate_limit.requests_per_day)
             );
 

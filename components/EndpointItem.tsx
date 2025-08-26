@@ -1,5 +1,5 @@
 import React from 'react';
-import { Endpoint, ApiKey } from '../types';
+import { Endpoint, ApiKey, CorsConfig } from '../types';
 import { BeakerIcon, BoltIcon, CloneIcon, EditIcon, TrashIcon } from './Icons';
 
 interface EndpointItemProps {
@@ -48,8 +48,8 @@ const KeyUsageStats: React.FC<{ keys: ApiKey[] }> = ({ keys }) => {
                                     {key.rate_limit?.requests_per_minute != null && (
                                         <span>RPM: <span className="font-bold">{key.rate_limit.requests_per_minute}</span></span>
                                     )}
-                                     {key.rate_limit?.requests_per_hour != null && (
-                                        <span>RPH: <span className="font-bold">{key.rate_limit.requests_per_hour}</span></span>
+                                     {key.rate_limit?.tokens_per_minute != null && (
+                                        <span>TPM: <span className="font-bold">{key.rate_limit.tokens_per_minute}</span></span>
                                     )}
                                      {key.rate_limit?.requests_per_day != null && (
                                         <span>RPD: <span className="font-bold">{key.rate_limit.requests_per_day}</span></span>
@@ -59,6 +59,36 @@ const KeyUsageStats: React.FC<{ keys: ApiKey[] }> = ({ keys }) => {
                         )}
                     </div>
                 ))}
+            </div>
+        </div>
+    );
+};
+
+const CorsInfo: React.FC<{ config: CorsConfig }> = ({ config }) => {
+    if (!config || !config.enabled) {
+        return null;
+    }
+
+    const renderList = (items: string[] | undefined) => (
+        items && items.length > 0 ? items.join(', ') : <span className="text-gray-400 dark:text-gray-500">Not set</span>
+    );
+
+    return (
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-2">CORS Configuration</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">Origins:</span>
+                    <p className="text-gray-800 dark:text-gray-200 break-words">{renderList(config.allowed_origins)}</p>
+                </div>
+                 <div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">Methods:</span>
+                    <p className="text-gray-800 dark:text-gray-200 break-words">{renderList(config.allowed_methods)}</p>
+                </div>
+                 <div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">Headers:</span>
+                    <p className="text-gray-800 dark:text-gray-200 break-words">{renderList(config.allowed_headers)}</p>
+                </div>
             </div>
         </div>
     );
@@ -131,6 +161,7 @@ const EndpointItem: React.FC<EndpointItemProps> = ({ endpoint, onEdit, onDelete,
                 </div>
             </div>
             {hasApiKeys && <KeyUsageStats keys={endpoint.auth_config!.values!} />}
+            {endpoint.cors_config && <CorsInfo config={endpoint.cors_config} />}
         </div>
     );
 };

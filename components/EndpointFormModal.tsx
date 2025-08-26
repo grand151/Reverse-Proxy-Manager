@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Endpoint, AuthConfig, ApiKey } from '../types';
+import { Endpoint, AuthConfig, ApiKey, CorsConfig } from '../types';
 import Modal from './Modal';
 import { MinusIcon, PlusIcon } from './Icons';
 
@@ -19,6 +19,7 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
         target_url: '',
         headers_to_add: {},
         auth_config: { type: 'none' },
+        cors_config: { enabled: false, allowed_origins: [], allowed_methods: [], allowed_headers: [] },
     });
 
     const [formData, setFormData] = useState<Endpoint>(getInitialFormData());
@@ -31,6 +32,9 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
             const processedEndpoint = JSON.parse(JSON.stringify(endpoint));
             if (!processedEndpoint.path_prefixes || processedEndpoint.path_prefixes.length === 0) {
                 processedEndpoint.path_prefixes = [''];
+            }
+             if (!processedEndpoint.cors_config) {
+                processedEndpoint.cors_config = { enabled: false, allowed_origins: [], allowed_methods: [], allowed_headers: [] };
             }
             if (processedEndpoint.auth_config?.type === 'api_key') {
                 if (!processedEndpoint.auth_config.in) {
@@ -122,7 +126,7 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
         }));
     }
 
-    const handleApiKeyValueChange = (index: number, field: 'value' | 'requests_per_minute' | 'requests_per_hour' | 'requests_per_day', value: string) => {
+    const handleApiKeyValueChange = (index: number, field: 'value' | 'requests_per_minute' | 'tokens_per_minute' | 'requests_per_day', value: string) => {
         setFormData(prev => {
             const newValues = [...(prev.auth_config?.values || [])];
             const updatedKey = { ...newValues[index] };
@@ -193,6 +197,29 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
         });
     };
 
+    const handleCorsEnabledChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            cors_config: {
+                ...prev.cors_config!,
+                enabled: checked,
+            }
+        }));
+    };
+
+    const handleCorsListChange = (field: 'allowed_origins' | 'allowed_methods' | 'allowed_headers', value: string) => {
+        const valuesArray = value.split(',').map(item => item.trim()).filter(Boolean);
+        setFormData(prev => ({
+            ...prev,
+            cors_config: {
+                ...prev.cors_config!,
+                enabled: prev.cors_config?.enabled || false,
+                [field]: valuesArray,
+            }
+        }));
+    };
+
     const formTitle = endpoint ? 'Edit Endpoint' : 'Add New Endpoint';
     
     const inputClass = "bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white";
@@ -249,7 +276,62 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
                                   placeholder='{"X-Custom-Header": "Value"}'></textarea>
                          {errors.headers_to_add && <p className="mt-1 text-xs text-red-500">{errors.headers_to_add}</p>}
                     </div>
-                     <div className="space-y-2">
+
+                     <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <label className="block text-sm font-medium text-gray-900 dark:text-white">CORS Configuration</label>
+                         <div className="flex items-center">
+                            <input
+                                id="cors_enabled"
+                                type="checkbox"
+                                checked={formData.cors_config?.enabled || false}
+                                onChange={handleCorsEnabledChange}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                            />
+                            <label htmlFor="cors_enabled" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                                Enable CORS
+                            </label>
+                        </div>
+                         {formData.cors_config?.enabled && (
+                            <div className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg space-y-4">
+                                <div>
+                                    <label htmlFor="allowed_origins" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Allowed Origins</label>
+                                    <input 
+                                        type="text" 
+                                        id="allowed_origins"
+                                        value={formData.cors_config?.allowed_origins?.join(', ') || ''}
+                                        onChange={(e) => handleCorsListChange('allowed_origins', e.target.value)}
+                                        className={inputClass}
+                                        placeholder="e.g., https://example.com, *"
+                                    />
+                                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Comma-separated list of origins. Use '*' for a wildcard.</p>
+                                </div>
+                                <div>
+                                    <label htmlFor="allowed_methods" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Allowed Methods</label>
+                                    <input 
+                                        type="text" 
+                                        id="allowed_methods"
+                                        value={formData.cors_config?.allowed_methods?.join(', ') || ''}
+                                        onChange={(e) => handleCorsListChange('allowed_methods', e.target.value)}
+                                        className={inputClass}
+                                        placeholder="e.g., GET, POST, OPTIONS"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="allowed_headers" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Allowed Headers</label>
+                                    <input 
+                                        type="text" 
+                                        id="allowed_headers"
+                                        value={formData.cors_config?.allowed_headers?.join(', ') || ''}
+                                        onChange={(e) => handleCorsListChange('allowed_headers', e.target.value)}
+                                        className={inputClass}
+                                        placeholder="e.g., Content-Type, Authorization"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                     <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                         <label htmlFor="auth_type" className="block text-sm font-medium text-gray-900 dark:text-white">Auth Config</label>
                         <select id="auth_type" value={formData.auth_config?.type || 'none'} onChange={handleAuthTypeChange}
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
@@ -304,9 +386,9 @@ const EndpointFormModal: React.FC<EndpointFormModalProps> = ({ isOpen, onClose, 
                                                     className={`${inputClass} text-xs p-2`} />
                                             </div>
                                              <div>
-                                                <label htmlFor={`rph-${index}`} className="text-xs font-medium text-gray-600 dark:text-gray-400">RPH</label>
-                                                <input id={`rph-${index}`} type="number" min="0" placeholder="Reqs/Hour" value={key.rate_limit?.requests_per_hour || ''}
-                                                    onChange={(e) => handleApiKeyValueChange(index, 'requests_per_hour', e.target.value)}
+                                                <label htmlFor={`tpm-${index}`} className="text-xs font-medium text-gray-600 dark:text-gray-400">TPM</label>
+                                                <input id={`tpm-${index}`} type="number" min="0" placeholder="Tokens/Min" value={key.rate_limit?.tokens_per_minute || ''}
+                                                    onChange={(e) => handleApiKeyValueChange(index, 'tokens_per_minute', e.target.value)}
                                                     className={`${inputClass} text-xs p-2`} />
                                             </div>
                                              <div>
